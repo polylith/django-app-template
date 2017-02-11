@@ -10,6 +10,7 @@ from {{ app_name }} import models
 class SwaggerTests(LiveServerTestCase):
     def setUp(self):
         # Add your sample data here
+        pass
 
     @staticmethod
     def operation_test_generator(operation):
