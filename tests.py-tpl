@@ -1,0 +1,43 @@
+import json
+
+from bravado.client import SwaggerClient, CallableOperation
+from bravado.swagger_model import load_file
+from django.test import LiveServerTestCase
+
+from {{ app_name }} import models
+
+
+class SwaggerTests(LiveServerTestCase):
+    def setUp(self):
+        # Add your sample data here
+
+    @staticmethod
+    def operation_test_generator(operation):
+        def test(self):
+            base_path = operation.swagger_spec.spec_dict.get('basePath', '')
+            operation.swagger_spec.api_url = "{}{}".format(self.live_server_url, base_path)
+
+            successful_response = None
+            successful_response_code = None
+            for response_code, response_dict in operation.op_spec["responses"].items():
+                if response_code.startswith("2"):
+                    successful_response_code = int(response_code)
+                    successful_response = response_dict
+                    break
+            assert successful_response is not None
+            assert successful_response_code is not None
+            example = successful_response["examples"]["application/json"]
+            expected_json = json.loads(example)
+            result, response = CallableOperation(operation)().result()
+            assert expected_json == response.json()
+            assert successful_response_code == response.status_code
+
+        return test
+
+
+client = SwaggerClient.from_spec(load_file('swagger.yaml'), config={'also_return_response': True})
+
+for resource in client.swagger_spec.resources.values():
+    for operation in resource.operations.values():
+        test_method = SwaggerTests.operation_test_generator(operation)
+        setattr(SwaggerTests, "test_{}".format(operation.operation_id), test_method)
