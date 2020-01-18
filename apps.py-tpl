@@ -1,5 +1,19 @@
 from django.apps import AppConfig
-
+from django.conf import settings
+from prometheus_client import REGISTRY
 
 class {{ camel_case_app_name }}Config(AppConfig):
     name = '{{ app_name }}'
+
+
+    def ready(self):
+        from {{ app_name }}.handlers import EventHandlers
+        from {{ app_name }} import metrics
+
+        REGISTRY.register(metrics.DynamicMetricsCollector())
+        metrics.register_static_metrics()
+
+    def add_new_handler(self, event_name: str, new_handler: Callable):
+        handlers = settings.REGISTERED_EVENTS.get(event_name, [])
+        handlers.append(new_handler)
+        settings.REGISTERED_EVENTS[event_name] = handlers
